@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TourPulse - Smart Sustainable Tourism</title>
-    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
-    <script src="[https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js](https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js)"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
         .badge-low { background-color: #059669; color: #ecfdf5; }
         .badge-moderate { background-color: #d97706; color: #fffbeb; }
@@ -69,60 +69,43 @@
                     <div id="homestaysGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"></div>
                 </div>
                 <div>
-                    <h3 class="text-md font-semibold text-teal-400 mb-3">🧭 Verified Local Guides</h3>
+                    <h3 class="text-md font-semibold text-teal-400 mb-3">🌟 Local Guides</h3>
                     <div id="guidesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"></div>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- Floating Chat Widget -->
-    <div id="chatDrawer" class="hidden fixed bottom-20 right-6 w-80 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex-col h-96 z-50">
-        <div class="bg-slate-900 p-3 rounded-t-xl border-b border-slate-700 flex justify-between items-center">
-            <span class="font-bold text-teal-400">AI Concierge</span>
-            <button onclick="toggleChat()" class="text-slate-400 hover:text-white">✕</button>
-        </div>
-        <div id="chatHistory" class="flex-1 p-4 overflow-y-auto space-y-3 text-sm">
-            <div class="text-slate-300 bg-slate-700 p-2 rounded-lg self-start">Hi! Ask me about crowd avoidance in Munnar, Hampi, Goa, or Leh.</div>
-        </div>
-        <div class="p-3 border-t border-slate-700 bg-slate-900 rounded-b-xl flex gap-2">
-            <input type="text" id="chatInput" placeholder="Type here..." class="flex-1 bg-slate-800 text-white px-3 py-1.5 rounded outline-none text-sm border border-slate-700">
-            <button onclick="sendChat()" class="bg-teal-500 text-slate-900 px-3 py-1.5 rounded font-bold text-sm">Send</button>
-        </div>
-    </div>
-    <button onclick="toggleChat()" class="fixed bottom-6 right-6 bg-teal-500 text-slate-900 p-4 rounded-full shadow-lg font-black text-xl hover:bg-teal-400 z-50">💬</button>
-
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            loadDestinations();
-            loadMarketplace();
-            document.getElementById('itineraryForm').addEventListener('submit', handleItinerarySubmit);
-        });
-
-        function toggleChat() {
-            const drawer = document.getElementById('chatDrawer');
-            drawer.classList.toggle('hidden');
-            drawer.classList.toggle('flex');
-        }
-
-        async function sendChat() {
-            const input = document.getElementById('chatInput');
-            const msg = input.value.trim();
-            if (!msg) return;
-            
-            const history = document.getElementById('chatHistory');
-            history.innerHTML += `<div class="text-slate-900 bg-teal-400 p-2 rounded-lg ml-auto max-w-[85%]">${msg}</div>`;
-            input.value = '';
-            history.scrollTop = history.scrollHeight;
+        document.getElementById('itineraryForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('generateBtn');
+            const out = document.getElementById('itineraryOutput');
+            btn.disabled = true;
+            btn.innerText = "Generating...";
+            out.classList.remove('hidden');
 
             try {
-                const res = await axios.post('/api/concierge/chat', { message: msg });
-                history.innerHTML += `<div class="text-slate-300 bg-slate-700 p-2 rounded-lg mr-auto max-w-[85%]">${res.data.response}</div>`;
+                const payload = {
+                    destination: document.getElementById('itineraryDest').value,
+                    days: parseInt(document.getElementById('itineraryDays').value),
+                    budget: parseFloat(document.getElementById('itineraryBudget').value),
+                    travel_style: document.getElementById('itineraryStyle').value
+                };
+                const res = await axios.post('/api/itinerary/generate', payload);
+                out.innerHTML = res.data.days_plan.map(d => `
+                    <div class="bg-slate-900 p-4 rounded-lg border border-slate-800">
+                        <div class="font-bold text-teal-300 text-sm mb-1">Day ${d.day} - $${d.estimated_cost}</div>
+                        <ul class="text-xs text-slate-300 list-disc list-inside">${d.activities.map(a => `<li>${a}</li>`).join('')}</ul>
+                    </div>
+                `).join('');
             } catch (err) {
-                history.innerHTML += `<div class="text-rose-400 bg-slate-700 p-2 rounded-lg mr-auto text-xs">Error reaching concierge.</div>`;
+                out.innerHTML = `<div class="text-rose-400 text-sm">Failed to generate itinerary.</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Generate Optimized Plan";
             }
-            history.scrollTop = history.scrollHeight;
-        }
+        });
 
         async function loadDestinations() {
             try {
@@ -164,35 +147,10 @@
             } catch (err) { console.error(err); }
         }
 
-        async function handleItinerarySubmit(e) {
-            e.preventDefault();
-            const btn = document.getElementById('generateBtn');
-            const out = document.getElementById('itineraryOutput');
-            btn.disabled = true;
-            btn.innerText = "Generating...";
-            out.classList.remove('hidden');
-
-            try {
-                const payload = {
-                    destination: document.getElementById('itineraryDest').value,
-                    days: parseInt(document.getElementById('itineraryDays').value),
-                    budget: parseFloat(document.getElementById('itineraryBudget').value),
-                    travel_style: document.getElementById('itineraryStyle').value
-                };
-                const res = await axios.post('/api/itinerary/generate', payload);
-                out.innerHTML = res.data.days_plan.map(d => `
-                    <div class="bg-slate-900 p-4 rounded-lg border border-slate-800">
-                        <div class="font-bold text-teal-300 text-sm mb-1">Day ${d.day} - $${d.estimated_cost}</div>
-                        <ul class="text-xs text-slate-300 list-disc list-inside">${d.activities.map(a => `<li>${a}</li>`).join('')}</ul>
-                    </div>
-                `).join('');
-            } catch (err) {
-                out.innerHTML = `<div class="text-rose-400 text-sm">Failed to generate itinerary.</div>`;
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Generate Optimized Plan";
-            }
-        }
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDestinations();
+            loadMarketplace();
+        });
     </script>
 </body>
 </html>
