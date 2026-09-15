@@ -3,154 +3,505 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TourPulse - Smart Sustainable Tourism</title>
+    <meta name="theme-color" content="#06131d">
+    <title>TourPulse · Smart Tourism Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { display: ['Manrope', 'sans-serif'], sans: ['DM Sans', 'sans-serif'] },
+                    boxShadow: { glow: '0 0 50px rgba(45, 212, 191, 0.12)' }
+                }
+            }
+        };
+    </script>
     <style>
-        .badge-low { background-color: #059669; color: #ecfdf5; }
-        .badge-moderate { background-color: #d97706; color: #fffbeb; }
-        .badge-high { background-color: #dc2626; color: #fef2f2; }
+        :root { --bg:#06131d; --panel:#0c1d29; --panel2:#102635; --line:#1d3b4a; --muted:#8ca5b2; --teal:#2dd4bf; --amber:#f59e0b; --red:#f43f5e; }
+        * { box-sizing: border-box; }
+        html { scroll-behavior:smooth; }
+        body { margin:0; background: radial-gradient(circle at 15% 0%, rgba(20,184,166,.15), transparent 26%), radial-gradient(circle at 90% 10%, rgba(56,189,248,.10), transparent 25%), var(--bg); color:#edf7fa; font-family:'DM Sans',sans-serif; }
+        h1,h2,h3,h4,.font-display { font-family:'Manrope',sans-serif; }
+        .glass { background:linear-gradient(180deg, rgba(15,35,48,.90), rgba(7,22,31,.92)); border:1px solid rgba(105,148,163,.16); box-shadow:0 24px 70px rgba(0,0,0,.25); backdrop-filter:blur(18px); }
+        .glass-soft { background:rgba(13,32,43,.68); border:1px solid rgba(105,148,163,.12); backdrop-filter:blur(12px); }
+        .gradient-text { background:linear-gradient(110deg,#e6fffb,#5eead4,#7dd3fc); -webkit-background-clip:text; background-clip:text; color:transparent; }
+        .hero-grid { background-image:linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size:48px 48px; mask-image:linear-gradient(to bottom, black, transparent); }
+        .pulse { animation:pulse 2.2s ease-in-out infinite; }
+        @keyframes pulse { 0%,100%{opacity:.8;transform:scale(1)} 50%{opacity:1;transform:scale(1.04)} }
+        .float-in { animation:floatIn .6s ease both; }
+        @keyframes floatIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+        .status-low { color:#6ee7b7; background:rgba(16,185,129,.10); border-color:rgba(16,185,129,.18); }
+        .status-moderate { color:#fbbf24; background:rgba(245,158,11,.10); border-color:rgba(245,158,11,.18); }
+        .status-high { color:#fda4af; background:rgba(244,63,94,.10); border-color:rgba(244,63,94,.18); }
+        .crowd-bar { height:8px; border-radius:999px; background:#17303c; overflow:hidden; }
+        .crowd-fill { height:100%; border-radius:999px; transition:width .5s ease; }
+        .map-shell { min-height:540px; }
+        #crowdMap { width:100%; height:540px; border-radius:24px; overflow:hidden; }
+        .leaflet-container { background:#07151f; font-family:'DM Sans',sans-serif; }
+        .leaflet-popup-content-wrapper,.leaflet-popup-tip { background:#0a1d28; color:#e7f5f7; border:1px solid #21404c; }
+        .leaflet-popup-content { margin:14px 16px; }
+        .tab-active { background:rgba(45,212,191,.12); color:#7ce9db; border-color:rgba(45,212,191,.20); }
+        .btn-primary { background:linear-gradient(135deg,#2dd4bf,#14b8a6); color:#06201d; box-shadow:0 14px 34px rgba(20,184,166,.18); }
+        .btn-primary:hover { filter:brightness(1.04); transform:translateY(-1px); }
+        .btn-secondary { background:#102735; border:1px solid #23424f; color:#cce7ec; }
+        .btn-secondary:hover { background:#153241; }
+        .input-dark { background:#081822; border:1px solid #20404e; color:#eefbfc; }
+        .input-dark:focus { outline:none; border-color:#2dd4bf; box-shadow:0 0 0 3px rgba(45,212,191,.08); }
+        .chat-shadow { box-shadow:0 24px 90px rgba(0,0,0,.5); }
+        .hide-scroll::-webkit-scrollbar { display:none; }
+        .hide-scroll { scrollbar-width:none; }
+        .nav-link { color:#90aab5; }
+        .nav-link:hover { color:#ecfeff; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen">
+<body>
+    <div class="fixed inset-0 pointer-events-none hero-grid opacity-60"></div>
 
-    <header class="bg-slate-800 border-b border-slate-700 py-6 px-8 shadow-md">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-black tracking-wide text-teal-400">⚡ TourPulse</h1>
-                <p class="text-xs text-slate-400">AI-Powered Crowd Intelligence & Sustainable Travel</p>
-            </div>
+    <header class="sticky top-0 z-40 border-b border-white/5 bg-[#06131d]/85 backdrop-blur-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <button class="flex items-center gap-3" onclick="window.scrollTo({top:0, behavior:'smooth'})">
+                <div class="w-10 h-10 rounded-2xl bg-teal-400/10 border border-teal-300/15 grid place-items-center text-xl">◈</div>
+                <div class="text-left">
+                    <div class="font-display font-extrabold tracking-tight">Tour<span class="text-teal-300">Pulse</span></div>
+                    <div class="text-[10px] uppercase tracking-[.22em] text-slate-500">Smart Tourism Intelligence</div>
+                </div>
+            </button>
+            <nav class="hidden md:flex items-center gap-5 text-sm">
+                <a class="nav-link" href="#pulse">Live Pulse</a>
+                <a class="nav-link" href="#itinerary">Smart Route</a>
+                <a class="nav-link" href="#marketplace">Local Economy</a>
+                <a class="nav-link" href="#command">Impact</a>
+            </nav>
+            <button class="btn-primary px-4 py-2 rounded-xl font-bold text-sm transition" onclick="openChat('Plan a quieter trip for me')">Ask TourPulse ✦</button>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto p-6 space-y-10">
-        <!-- Real-Time Crowd Tracker Section -->
-        <section>
-            <h2 class="text-xl font-bold text-white mb-4">Real-Time Crowd Tracker</h2>
-            <div id="destinationsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    <main class="relative z-10">
+        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-10">
+            <div class="grid lg:grid-cols-[1.08fr_.92fr] gap-10 items-center">
+                <div class="float-in">
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass-soft text-[11px] uppercase tracking-[.18em] text-teal-200 mb-5">
+                        <span class="w-2 h-2 rounded-full bg-teal-300 pulse"></span> Live crowd-aware travel
+                    </div>
+                    <h1 class="text-5xl sm:text-6xl xl:text-7xl leading-[.98] font-extrabold tracking-tight max-w-3xl">
+                        Travel beyond the <span class="gradient-text">crowd.</span>
+                    </h1>
+                    <p class="mt-6 text-lg text-slate-300 max-w-2xl leading-relaxed">
+                        TourPulse turns crowd pressure into smarter routes — balancing visitor flows, surfacing hidden gems, and directing spend toward local communities.
+                    </p>
+                    <div class="flex flex-wrap gap-3 mt-8">
+                        <a href="#pulse" class="btn-primary px-5 py-3 rounded-2xl font-bold transition">Explore the live pulse</a>
+                        <button class="btn-secondary px-5 py-3 rounded-2xl font-semibold transition" onclick="document.getElementById('itinerary').scrollIntoView({behavior:'smooth'})">Build my route</button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 max-w-lg mt-9">
+                        <div class="glass-soft rounded-2xl p-4"><div class="text-2xl font-extrabold">15</div><div class="text-xs text-slate-500 mt-1">destinations monitored</div></div>
+                        <div class="glass-soft rounded-2xl p-4"><div class="text-2xl font-extrabold">5</div><div class="text-xs text-slate-500 mt-1">local vendor types</div></div>
+                        <div class="glass-soft rounded-2xl p-4"><div class="text-2xl font-extrabold">24%</div><div class="text-xs text-slate-500 mt-1">projected pressure drop</div></div>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <div class="glass rounded-[30px] p-5 shadow-glow">
+                        <div class="flex items-center justify-between mb-5">
+                            <div>
+                                <div class="text-xs uppercase tracking-[.2em] text-slate-500">Tourism pulse</div>
+                                <div class="text-xl font-extrabold mt-1">Where should people go next?</div>
+                            </div>
+                            <div class="text-xs px-3 py-1.5 rounded-full border border-teal-400/15 bg-teal-400/10 text-teal-200">AI ready</div>
+                        </div>
+                        <div id="heroAlerts" class="space-y-3"></div>
+                        <div class="mt-4 p-4 rounded-2xl bg-gradient-to-r from-teal-400/10 to-sky-400/5 border border-white/5">
+                            <div class="flex items-start gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-teal-300/10 grid place-items-center">↗</div>
+                                <div class="text-sm">
+                                    <div class="font-bold">The point isn't to send everyone to the same place.</div>
+                                    <div class="text-slate-400 mt-1">TourPulse redirects demand before congestion becomes the experience.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
 
-        <!-- AI Itinerary Generator Section -->
-        <section class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-xl">
-            <h2 class="text-xl font-bold text-white mb-4">AI Sustainable Itinerary Generator</h2>
-            <form id="itineraryForm" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <section id="pulse" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex items-end justify-between gap-4 mb-5">
                 <div>
-                    <label class="block text-xs text-slate-300 mb-1">Destination</label>
-                    <input type="text" id="itineraryDest" required value="Kerala" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none">
+                    <div class="text-xs uppercase tracking-[.2em] text-teal-300/70">01 · Live Pulse</div>
+                    <h2 class="text-3xl font-extrabold mt-1">Crowd intelligence, not crowd watching.</h2>
                 </div>
-                <div>
-                    <label class="block text-xs text-slate-300 mb-1">Days</label>
-                    <input type="number" id="itineraryDays" required value="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none">
+                <div id="liveIndicator" class="hidden sm:flex items-center gap-2 text-xs text-slate-500"><span class="w-2 h-2 rounded-full bg-slate-500"></span> Connecting to live telemetry…</div>
+            </div>
+
+            <div class="grid xl:grid-cols-[1.55fr_.45fr] gap-5">
+                <div class="glass rounded-[28px] p-3 map-shell"><div id="crowdMap"></div></div>
+                <div class="space-y-5">
+                    <div class="glass rounded-[28px] p-5">
+                        <div class="flex items-center justify-between"><div class="font-bold">Live hotspots</div><div class="text-xs text-slate-500" id="hotspotCount">—</div></div>
+                        <div id="hotspotsList" class="mt-4 space-y-3 max-h-[235px] overflow-auto hide-scroll"></div>
+                    </div>
+                    <div class="glass rounded-[28px] p-5">
+                        <div class="text-xs uppercase tracking-[.18em] text-slate-500">Legend</div>
+                        <div class="mt-4 space-y-3 text-sm">
+                            <div class="flex items-center gap-3"><span class="w-3 h-3 rounded-full bg-emerald-400"></span><span class="text-slate-300">Low · under 40%</span></div>
+                            <div class="flex items-center gap-3"><span class="w-3 h-3 rounded-full bg-amber-400"></span><span class="text-slate-300">Moderate · 40–75%</span></div>
+                            <div class="flex items-center gap-3"><span class="w-3 h-3 rounded-full bg-rose-500"></span><span class="text-slate-300">High · above 75%</span></div>
+                        </div>
+                        <button class="btn-secondary w-full mt-5 px-4 py-3 rounded-xl text-sm font-semibold" onclick="focusHighCrowd()">Show pressure points</button>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs text-slate-300 mb-1">Budget ($)</label>
-                    <input type="number" id="itineraryBudget" required value="450" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-300 mb-1">Travel Style</label>
-                    <select id="itineraryStyle" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none">
-                        <option value="budget">Budget / Eco</option>
-                        <option value="adventure">Adventure</option>
-                    </select>
-                </div>
-                <div class="col-span-full">
-                    <button type="submit" id="generateBtn" class="bg-teal-500 hover:bg-teal-600 text-slate-900 font-bold px-6 py-2.5 rounded-lg text-sm transition">Generate Optimized Plan</button>
-                </div>
-            </form>
-            <div id="itineraryOutput" class="hidden space-y-4 pt-4 border-t border-slate-700"></div>
+            </div>
         </section>
 
-        <!-- Local Marketplace Section -->
-        <section>
-            <h2 class="text-xl font-bold text-white mb-4">Local Marketplace</h2>
-            <div class="space-y-6">
-                <div>
-                    <h3 class="text-md font-semibold text-teal-400 mb-3">🌿 Certified Eco-Homestays</h3>
-                    <div id="homestaysGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex items-end justify-between gap-4 mb-5">
+                <div><div class="text-xs uppercase tracking-[.2em] text-teal-300/70">02 · Hidden Gems</div><h2 class="text-3xl font-extrabold mt-1">Don't just reroute. Give people a better reason to reroute.</h2></div>
+                <div id="alternativeHint" class="text-xs text-slate-500 hidden md:block">Pick a red zone to reveal its lower-density alternatives.</div>
+            </div>
+            <div id="alternativeGrid" class="grid md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+        </section>
+
+        <section id="itinerary" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="glass rounded-[30px] overflow-hidden">
+                <div class="p-6 sm:p-8 border-b border-white/5 bg-gradient-to-r from-teal-400/5 to-sky-400/5">
+                    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
+                        <div><div class="text-xs uppercase tracking-[.2em] text-teal-300/70">03 · Smart Route</div><h2 class="text-3xl font-extrabold mt-1">Build an itinerary that adapts to the ground reality.</h2><p class="text-slate-400 mt-2 max-w-2xl">Set your pace, budget and trip length. TourPulse prioritizes quieter windows, hidden gems and local experiences.</p></div>
+                        <div class="text-xs px-3 py-2 rounded-xl bg-slate-950/40 border border-white/5 text-slate-400">Budget-aware · Crowd-aware · Local-first</div>
+                    </div>
                 </div>
-                <div>
-                    <h3 class="text-md font-semibold text-teal-400 mb-3">🌟 Local Guides</h3>
-                    <div id="guidesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+                <div class="p-6 sm:p-8">
+                    <form id="itineraryForm" class="grid lg:grid-cols-5 gap-4">
+                        <div class="lg:col-span-2"><label class="block text-xs uppercase tracking-wider text-slate-500 mb-2">Destination / region</label><input id="itineraryDest" class="input-dark w-full rounded-xl px-4 py-3" value="Munnar" placeholder="Munnar, Jaipur, Goa…" required></div>
+                        <div><label class="block text-xs uppercase tracking-wider text-slate-500 mb-2">Days</label><input id="itineraryDays" type="number" min="1" max="14" class="input-dark w-full rounded-xl px-4 py-3" value="4" required></div>
+                        <div><label class="block text-xs uppercase tracking-wider text-slate-500 mb-2">Budget (₹)</label><input id="itineraryBudget" type="number" min="1" class="input-dark w-full rounded-xl px-4 py-3" value="20000" required></div>
+                        <div><label class="block text-xs uppercase tracking-wider text-slate-500 mb-2">Travel style</label><select id="itineraryStyle" class="input-dark w-full rounded-xl px-4 py-3"><option value="balanced">Balanced</option><option value="nature">Nature</option><option value="culture">Culture</option><option value="adventure">Adventure</option><option value="budget">Budget / Eco</option></select></div>
+                        <div class="lg:col-span-5 flex flex-wrap items-center justify-between gap-3 pt-2">
+                            <label class="inline-flex items-center gap-2 text-sm text-slate-400"><input id="avoidCrowd" type="checkbox" class="accent-teal-400" checked> Avoid high-crowd windows automatically</label>
+                            <button id="generateBtn" type="submit" class="btn-primary px-6 py-3 rounded-xl font-extrabold transition">Generate adaptive itinerary ✦</button>
+                        </div>
+                    </form>
+                    <div id="itineraryOutput" class="hidden mt-8"></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="marketplace" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-5">
+                <div><div class="text-xs uppercase tracking-[.2em] text-teal-300/70">04 · Local Economy</div><h2 class="text-3xl font-extrabold mt-1">Every reroute should create a local opportunity.</h2></div>
+                <div class="flex gap-2 flex-wrap">
+                    <button class="market-tab tab-active border rounded-xl px-3 py-2 text-xs font-semibold transition" data-tab="hotels">Hotels</button>
+                    <button class="market-tab border border-white/5 rounded-xl px-3 py-2 text-xs font-semibold text-slate-400 transition" data-tab="homestays">Eco-stays</button>
+                    <button class="market-tab border border-white/5 rounded-xl px-3 py-2 text-xs font-semibold text-slate-400 transition" data-tab="guides">Guides</button>
+                    <button class="market-tab border border-white/5 rounded-xl px-3 py-2 text-xs font-semibold text-slate-400 transition" data-tab="artisans">Artisans</button>
+                    <button class="market-tab border border-white/5 rounded-xl px-3 py-2 text-xs font-semibold text-slate-400 transition" data-tab="eateries">Food</button>
+                </div>
+            </div>
+            <div id="marketStatus" class="text-xs text-slate-500 mb-4"></div>
+            <div id="hotelsGrid" data-grid="hotels" class="grid md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+            <div id="homestaysGrid" data-grid="homestays" class="grid md:grid-cols-2 xl:grid-cols-3 gap-5 hidden"></div>
+            <div id="guidesGrid" data-grid="guides" class="grid md:grid-cols-2 xl:grid-cols-3 gap-5 hidden"></div>
+            <div id="artisansGrid" data-grid="artisans" class="grid md:grid-cols-2 xl:grid-cols-3 gap-5 hidden"></div>
+            <div id="eateriesGrid" data-grid="eateries" class="grid md:grid-cols-2 xl:grid-cols-3 gap-5 hidden"></div>
+        </section>
+
+        <section id="command" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20">
+            <div class="flex items-end justify-between mb-5">
+                <div><div class="text-xs uppercase tracking-[.2em] text-teal-300/70">05 · Tourism Command Center</div><h2 class="text-3xl font-extrabold mt-1">See the impact, not just the interface.</h2><p class="text-slate-400 mt-2">A lightweight view for tourism boards and destination managers.</p></div>
+                <button class="btn-secondary px-4 py-2.5 rounded-xl text-sm font-semibold" onclick="refreshImpact()">Refresh metrics</button>
+            </div>
+            <div class="grid sm:grid-cols-2 xl:grid-cols-5 gap-4" id="impactCards"></div>
+            <div class="grid xl:grid-cols-[1.2fr_.8fr] gap-5 mt-5">
+                <div class="glass rounded-[28px] p-6">
+                    <div class="flex items-center justify-between"><div class="font-bold">Regional pressure board</div><div class="text-xs text-slate-500">Current demo signal</div></div>
+                    <div id="pressureBoard" class="mt-5 space-y-4"></div>
+                </div>
+                <div class="glass rounded-[28px] p-6">
+                    <div class="font-bold">What TourPulse changes</div>
+                    <div class="space-y-4 mt-5 text-sm">
+                        <div class="flex gap-3"><div class="w-8 h-8 rounded-lg bg-rose-400/10 grid place-items-center text-rose-300">↓</div><div><div class="font-semibold">Pressure before queues</div><div class="text-slate-500 mt-1">Detect crowded destinations early and shift demand.</div></div></div>
+                        <div class="flex gap-3"><div class="w-8 h-8 rounded-lg bg-teal-400/10 grid place-items-center text-teal-300">↗</div><div><div class="font-semibold">Footfall to overlooked places</div><div class="text-slate-500 mt-1">Make quieter sites discoverable and useful.</div></div></div>
+                        <div class="flex gap-3"><div class="w-8 h-8 rounded-lg bg-sky-400/10 grid place-items-center text-sky-300">₹</div><div><div class="font-semibold">Spend reaches locals</div><div class="text-slate-500 mt-1">Surface community stays, guides, food and craft.</div></div></div>
+                    </div>
                 </div>
             </div>
         </section>
     </main>
 
+    <div id="chatDrawer" class="hidden fixed bottom-5 right-5 z-50 w-[min(390px,calc(100vw-24px))] glass rounded-[26px] overflow-hidden chat-shadow">
+        <div class="p-4 border-b border-white/5 bg-slate-950/25 flex items-center justify-between">
+            <div><div class="font-bold">TourPulse Concierge ✦</div><div id="aiMode" class="text-[10px] uppercase tracking-[.16em] text-teal-300/70 mt-1">Local intelligence</div></div>
+            <button class="w-9 h-9 rounded-xl btn-secondary" onclick="toggleChat()">✕</button>
+        </div>
+        <div id="chatHistory" class="h-80 overflow-y-auto p-4 space-y-3 bg-[#081822]/75"></div>
+        <div class="p-3 border-t border-white/5 flex gap-2">
+            <input id="chatInput" class="input-dark flex-1 rounded-xl px-3 py-2.5 text-sm" placeholder="e.g. Avoid crowds in Jaipur…">
+            <button id="chatSend" class="btn-primary rounded-xl px-4 font-bold" onclick="sendChat()">Send</button>
+        </div>
+    </div>
+    <button id="chatFab" class="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-2xl btn-primary font-black text-xl shadow-xl" onclick="toggleChat()">✦</button>
+
     <script>
-        document.getElementById('itineraryForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('generateBtn');
-            const out = document.getElementById('itineraryOutput');
-            btn.disabled = true;
-            btn.innerText = "Generating...";
-            out.classList.remove('hidden');
+        let crowdMapInstance;
+        let destinations = [];
+        let markers = [];
+        const palette = { low:'#34d399', moderate:'#f59e0b', high:'#f43f5e' };
 
-            try {
-                const payload = {
-                    destination: document.getElementById('itineraryDest').value,
-                    days: parseInt(document.getElementById('itineraryDays').value),
-                    budget: parseFloat(document.getElementById('itineraryBudget').value),
-                    travel_style: document.getElementById('itineraryStyle').value
-                };
-                const res = await axios.post('/api/itinerary/generate', payload);
-                out.innerHTML = res.data.days_plan.map(d => `
-                    <div class="bg-slate-900 p-4 rounded-lg border border-slate-800">
-                        <div class="font-bold text-teal-300 text-sm mb-1">Day ${d.day} - $${d.estimated_cost}</div>
-                        <ul class="text-xs text-slate-300 list-disc list-inside">${d.activities.map(a => `<li>${a}</li>`).join('')}</ul>
-                    </div>
-                `).join('');
-            } catch (err) {
-                out.innerHTML = `<div class="text-rose-400 text-sm">Failed to generate itinerary.</div>`;
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Generate Optimized Plan";
-            }
-        });
+        const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\'':'&#39;','"':'&quot;'}[ch]));
+        const statusKey = (status) => String(status || '').toLowerCase();
+        const statusClass = (status) => statusKey(status) === 'high' ? 'status-high' : (statusKey(status) === 'moderate' ? 'status-moderate' : 'status-low');
+        const crowdColor = (score) => score > 75 ? palette.high : (score >= 40 ? palette.moderate : palette.low);
 
-        async function loadDestinations() {
-            try {
-                const res = await axios.get('/api/destinations');
-                document.getElementById('destinationsGrid').innerHTML = res.data.map(d => `
-                    <div class="bg-slate-800 rounded-xl overflow-hidden border border-slate-700 shadow-md">
-                        <div class="p-5 space-y-3">
-                            <div class="flex justify-between items-start">
-                                <div><h3 class="font-bold text-lg text-white">${d.name}</h3><p class="text-xs text-slate-400">${d.location}</p></div>
-                                <span class="px-2.5 py-1 text-xs font-bold rounded-full ${d.status_tag.toLowerCase() === 'low' ? 'badge-low' : (d.status_tag.toLowerCase() === 'high' ? 'badge-high' : 'badge-moderate')}">${d.status_tag}</span>
-                            </div>
-                            <p class="text-xs text-slate-300">${d.description}</p>
-                        </div>
+        async function api(url, options={}) {
+            const res = await fetch(url, { headers: { 'Content-Type':'application/json', ...(options.headers || {}) }, ...options });
+            if (!res.ok) throw new Error((await res.text()) || `Request failed: ${res.status}`);
+            return res.json();
+        }
+
+        function initCrowdMap() {
+            crowdMapInstance = L.map('crowdMap', { zoomControl:true }).setView([22.1, 78.9], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:18, attribution:'© OpenStreetMap contributors' }).addTo(crowdMapInstance);
+        }
+
+        function renderMap() {
+            markers.forEach(marker => marker.remove());
+            markers = [];
+            destinations.forEach(d => {
+                const color = crowdColor(d.crowd_score);
+                const marker = L.circleMarker([d.lat, d.lng], { radius: Math.max(7, Math.min(15, d.crowd_score/7)), color, fillColor:color, fillOpacity:.55, weight:2 }).addTo(crowdMapInstance);
+                marker.bindPopup(`
+                    <div style="min-width:230px">
+                        <div style="font-size:16px;font-weight:800;margin-bottom:5px">${escapeHtml(d.name)}</div>
+                        <div style="color:#8ca5b2;font-size:12px">${escapeHtml(d.location)} · ${escapeHtml(d.category)}</div>
+                        <div style="margin-top:12px;font-weight:700">Crowd score ${d.crowd_score}/100</div>
+                        <div style="margin-top:7px;height:7px;background:#17303c;border-radius:999px;overflow:hidden"><div style="height:100%;width:${d.crowd_score}%;background:${color}"></div></div>
+                        <div style="margin-top:10px;color:#9fb5bf;font-size:12px">Best time: ${escapeHtml(d.best_time)}</div>
+                        ${d.crowd_score > 75 ? `<button onclick="showAlternatives(${d.id})" style="margin-top:12px;width:100%;padding:9px;border-radius:9px;border:1px solid #2b5160;background:#0f3440;color:#a8fff4;font-weight:700">Find a quieter alternative →</button>` : ''}
+                    </div>`);
+                marker.on('click', () => { if (d.crowd_score > 75) showAlternatives(d.id); });
+                markers.push(marker);
+            });
+        }
+
+        function renderHotspots() {
+            const hot = [...destinations].sort((a,b) => b.crowd_score - a.crowd_score);
+            document.getElementById('hotspotCount').textContent = `${hot.length} tracked`;
+            document.getElementById('hotspotsList').innerHTML = hot.slice(0,7).map(d => `
+                <button onclick="focusDestination(${d.id})" class="w-full text-left p-3 rounded-2xl glass-soft hover:bg-white/[.03] transition">
+                    <div class="flex items-center justify-between gap-3"><div class="font-semibold text-sm">${escapeHtml(d.name)}</div><div class="text-xs px-2 py-1 rounded-full border ${statusClass(d.status_tag)}">${escapeHtml(d.status_tag)}</div></div>
+                    <div class="crowd-bar mt-2"><div class="crowd-fill" style="width:${d.crowd_score}%;background:${crowdColor(d.crowd_score)}"></div></div>
+                    <div class="flex justify-between text-[11px] text-slate-500 mt-2"><span>${escapeHtml(d.location)}</span><span>${d.crowd_score}% pressure</span></div>
+                </button>`).join('');
+            const alerts = hot.filter(d => d.crowd_score > 75).slice(0,3);
+            document.getElementById('heroAlerts').innerHTML = alerts.map(d => {
+                const alt = destinations.find(x => d.alternate_ids?.includes(x.id));
+                return `<button onclick="showAlternatives(${d.id})" class="w-full text-left p-4 rounded-2xl glass-soft hover:bg-white/[.03] transition">
+                    <div class="flex items-center justify-between"><span class="text-sm font-bold">${escapeHtml(d.name)}</span><span class="text-xs font-bold text-rose-300">${d.crowd_score}% high</span></div>
+                    <div class="text-xs text-slate-400 mt-2">Try ${escapeHtml(alt ? alt.name : 'a lower-density alternative')} before queues peak.</div>
+                </button>`;
+            }).join('') || '<div class="p-4 rounded-2xl glass-soft text-sm text-slate-400">No high-pressure destination right now.</div>';
+        }
+
+        function focusDestination(id) {
+            const d = destinations.find(x => x.id === id); if (!d) return;
+            crowdMapInstance.flyTo([d.lat,d.lng], 8, {duration:1.2});
+            const marker = markers.find((m,i)=>destinations[i]?.id === id); if (marker) marker.openPopup();
+            if (d.crowd_score > 75) showAlternatives(id);
+        }
+        function focusHighCrowd() { const d = [...destinations].sort((a,b)=>b.crowd_score-a.crowd_score)[0]; if (d) focusDestination(d.id); }
+
+        function renderAlternatives(source) {
+            const alternatives = source.alternatives || [];
+            document.getElementById('alternativeGrid').innerHTML = alternatives.length ? alternatives.map(a => {
+                const d = a.destination;
+                return `<div class="glass rounded-[26px] overflow-hidden">
+                    <div class="h-40 bg-cover bg-center" style="background-image:url('${escapeHtml(d.image_url)}')"></div>
+                    <div class="p-5">
+                        <div class="flex items-start justify-between gap-3"><div><div class="text-xs text-teal-300 uppercase tracking-widest">Recommended alternative</div><h3 class="font-extrabold text-lg mt-1">${escapeHtml(d.name)}</h3></div><div class="text-xs px-2.5 py-1 rounded-full border ${statusClass(d.status_tag)}">${d.crowd_score}%</div></div>
+                        <p class="text-sm text-slate-400 mt-3">${escapeHtml(a.reason)}</p>
+                        <div class="grid grid-cols-2 gap-2 mt-4"><div class="rounded-xl bg-slate-950/40 p-3"><div class="text-lg font-extrabold">−${a.crowd_reduction}%</div><div class="text-[10px] text-slate-500 uppercase tracking-wider">crowd pressure</div></div><div class="rounded-xl bg-slate-950/40 p-3"><div class="text-lg font-extrabold">${a.distance_km} km</div><div class="text-[10px] text-slate-500 uppercase tracking-wider">approx. route</div></div></div>
+                        <button onclick="focusDestination(${d.id})" class="btn-secondary w-full mt-4 px-4 py-2.5 rounded-xl text-sm font-semibold">Open on map</button>
                     </div>
-                `).join('');
+                </div>`;
+            }).join('') : '<div class="glass rounded-2xl p-5 text-slate-400">No alternatives linked yet. Pick a different destination.</div>';
+        }
+
+        async function showAlternatives(id) {
+            try {
+                const source = await api(`/api/alternatives/${id}`);
+                document.getElementById('alternativeHint').textContent = `Alternatives for ${source.source?.name || 'selected destination'}`;
+                renderAlternatives(source);
+                document.getElementById('alternativeGrid').scrollIntoView({behavior:'smooth',block:'center'});
             } catch (err) { console.error(err); }
         }
 
+        function cardCommon(icon, badge, title, subtitle, rating, body, footer, action='') {
+            return `<div class="glass rounded-[26px] p-5 hover:-translate-y-0.5 transition">
+                <div class="flex items-start justify-between gap-3"><div class="w-11 h-11 rounded-2xl bg-teal-300/10 grid place-items-center text-xl">${icon}</div><div class="text-[10px] uppercase tracking-wider text-teal-200 px-2.5 py-1 rounded-full border border-teal-300/10 bg-teal-300/5">${escapeHtml(badge || 'Local')}</div></div>
+                <div class="mt-4"><div class="flex items-center justify-between gap-2"><h3 class="font-extrabold text-lg">${escapeHtml(title)}</h3>${rating ? `<span class="text-amber-300 text-sm">★ ${rating}</span>` : ''}</div><div class="text-xs text-slate-500 mt-1">${escapeHtml(subtitle)}</div></div>
+                <div class="text-sm text-slate-400 mt-4 leading-relaxed">${body}</div>
+                <div class="pt-4 mt-4 border-t border-white/5 flex items-center justify-between gap-3"><div class="text-xs text-slate-500">${footer}</div>${action}</div>
+            </div>`;
+        }
+
+        let marketplaceCache = {};
         async function loadMarketplace() {
-            try {
-                const hRes = await axios.get('/api/vendors/homestays');
-                document.getElementById('homestaysGrid').innerHTML = hRes.data.map(h => `
-                    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 text-sm">
-                        <div class="font-bold text-white">${h.name}</div>
-                        <div class="text-slate-400 text-xs mb-2">${h.region}</div>
-                        <div class="font-bold text-teal-400">$${h.price_per_night}/night</div>
-                        <div class="text-[10px] text-slate-300 mt-2">${h.amenities.join(', ')}</div>
-                    </div>
-                `).join('');
-
-                const gRes = await axios.get('/api/vendors/guides');
-                document.getElementById('guidesGrid').innerHTML = gRes.data.map(g => `
-                    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 text-sm">
-                        <div class="flex justify-between font-bold text-white"><span>${g.name}</span><span class="text-amber-400">★ ${g.rating}</span></div>
-                        <div class="text-slate-400 text-xs mb-2">${g.region}</div>
-                        <div class="text-xs text-slate-300">${g.bio}</div>
-                    </div>
-                `).join('');
-            } catch (err) { console.error(err); }
+            const endpoints = { hotels:'hotels', homestays:'homestays', guides:'guides', artisans:'artisans', eateries:'eateries' };
+            await Promise.all(Object.entries(endpoints).map(async ([tab, endpoint]) => {
+                try { marketplaceCache[tab] = await api(`/api/vendors/${endpoint}`); renderMarketplace(tab); }
+                catch (err) { marketplaceCache[tab] = []; renderMarketplace(tab); console.error(err); }
+            }));
+            setMarketTab('hotels');
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            loadDestinations();
+        function renderMarketplace(tab) {
+            const items = marketplaceCache[tab] || [];
+            const grid = document.querySelector(`[data-grid="${tab}"]`);
+            if (!grid) return;
+            grid.innerHTML = items.map(item => {
+                if (tab === 'hotels') return cardCommon('⌂', item.badge || 'Stay', item.name, item.region, item.rating, `<div class="flex flex-wrap gap-2">${item.amenities.map(x=>`<span class="px-2 py-1 rounded-lg bg-slate-950/40 text-xs">${escapeHtml(x)}</span>`).join('')}</div>`, `₹${Number(item.price_per_night).toLocaleString('en-IN')} / night`, `<button class="btn-secondary px-3 py-1.5 rounded-lg text-xs font-bold" onclick="openChat('Recommend a stay like ${escapeHtml(item.name)}')">Ask AI</button>`);
+                if (tab === 'homestays') return cardCommon('⌂', 'Eco-stay', item.name, item.region, item.rating, `<div class="flex flex-wrap gap-2">${item.amenities.map(x=>`<span class="px-2 py-1 rounded-lg bg-emerald-400/5 text-xs text-emerald-200">${escapeHtml(x)}</span>`).join('')}</div>`, `₹${Number(item.price_per_night).toLocaleString('en-IN')} / night`, `<span class="text-emerald-300 text-xs font-bold">✓ Verified</span>`);
+                if (tab === 'guides') return cardCommon('◎', 'Verified guide', item.name, item.region, item.rating, `<p>${escapeHtml(item.bio)}</p><div class="flex flex-wrap gap-2 mt-3">${item.specialties.map(x=>`<span class="px-2 py-1 rounded-lg bg-slate-950/40 text-xs">${escapeHtml(x)}</span>`).join('')}</div>`, item.languages.map(escapeHtml).join(' · '), `<button class="btn-secondary px-3 py-1.5 rounded-lg text-xs font-bold" onclick="openChat('Find a guide for ${escapeHtml(item.region)}')">Match me</button>`);
+                if (tab === 'artisans') return cardCommon('✦', 'Community craft', item.name, item.region, item.rating, `<div class="font-semibold text-slate-200">${escapeHtml(item.craft)}</div><p class="mt-2">${escapeHtml(item.community_story)}</p>`, `From ₹${Number(item.price_from).toLocaleString('en-IN')}`, '');
+                return cardCommon('⌁', 'Local food', item.name, item.region, item.rating, `<div class="font-semibold text-slate-200">${escapeHtml(item.cuisine)}</div><p class="mt-2">Try: ${escapeHtml(item.signature)}</p>`, `${escapeHtml(item.price_band)} · ${escapeHtml(item.sustainability_note)}`, '');
+            }).join('') || '<div class="glass rounded-2xl p-5 text-slate-400">No local listings match this filter yet.</div>';
+        }
+
+        function setMarketTab(tab) {
+            document.querySelectorAll('.market-tab').forEach(btn => {
+                const active = btn.dataset.tab === tab;
+                btn.classList.toggle('tab-active', active);
+                if (!active) { btn.classList.remove('text-teal-200'); btn.classList.add('text-slate-400'); }
+                else { btn.classList.remove('text-slate-400'); btn.classList.add('text-teal-200'); }
+            });
+            document.querySelectorAll('[data-grid]').forEach(g => g.classList.toggle('hidden', g.dataset.grid !== tab));
+            document.getElementById('marketStatus').textContent = `${(marketplaceCache[tab] || []).length} local listings available in the demo inventory.`;
+        }
+
+        function initMarketTabs() { document.querySelectorAll('.market-tab').forEach(btn => btn.addEventListener('click', () => setMarketTab(btn.dataset.tab))); }
+
+        function renderItinerary(data) {
+            const out = document.getElementById('itineraryOutput');
+            const style = escapeHtml(data.travel_style);
+            out.classList.remove('hidden');
+            out.innerHTML = `<div class="grid xl:grid-cols-[1.1fr_.9fr] gap-5">
+                <div class="glass-soft rounded-[24px] p-5"><div class="flex items-start justify-between gap-4"><div><div class="text-xs uppercase tracking-wider text-teal-300/70">Optimized trip</div><h3 class="text-2xl font-extrabold mt-1">${escapeHtml(data.destination)}</h3></div><div class="text-right"><div class="text-2xl font-extrabold">₹${Number(data.total_estimated_cost).toLocaleString('en-IN')}</div><div class="text-xs text-slate-500">estimated total</div></div></div><p class="text-sm text-slate-400 mt-4">${escapeHtml(data.summary)}</p><div class="mt-5 space-y-4">${data.days_plan.map(day => `<div class="rounded-2xl bg-slate-950/35 border border-white/5 p-4"><div class="flex items-start justify-between gap-3"><div><div class="text-xs uppercase tracking-wider text-teal-300/60">Day ${day.day}</div><div class="font-bold mt-1">${escapeHtml(day.title)}</div></div><div class="text-sm font-bold">₹${Number(day.estimated_cost).toLocaleString('en-IN')}</div></div><div class="mt-3 space-y-2">${day.activities.map(a=>`<div class="text-sm text-slate-300">• ${escapeHtml(a)}</div>`).join('')}</div><div class="mt-3 text-xs text-amber-200/80">${escapeHtml(day.crowd_note)}</div><div class="mt-2 text-xs text-emerald-200/80">${escapeHtml(day.sustainability_tip)}</div></div>`).join('')}</div></div>
+                <div class="glass-soft rounded-[24px] p-5"><div class="font-bold">Why this route is smarter</div><div class="space-y-3 mt-4">${(data.optimization_notes || []).map(n=>`<div class="p-4 rounded-2xl bg-teal-400/5 border border-teal-300/10 text-sm text-slate-300">${escapeHtml(n)}</div>`).join('')}<div class="p-4 rounded-2xl bg-slate-950/35 border border-white/5"><div class="text-xs text-slate-500 uppercase tracking-wider">Travel profile</div><div class="mt-2 text-lg font-bold">${style}</div><div class="text-xs text-slate-500 mt-1">Crowd avoidance and local-first routing enabled.</div></div></div></div>
+            </div>`;
+        }
+
+        async function submitItinerary(event) {
+            event.preventDefault();
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true; btn.textContent = 'Optimizing…';
+            try {
+                const data = await api('/api/itinerary/generate', { method:'POST', body:JSON.stringify({ destination:document.getElementById('itineraryDest').value, days:Number(document.getElementById('itineraryDays').value), budget:Number(document.getElementById('itineraryBudget').value), travel_style:document.getElementById('itineraryStyle').value, avoid_high_crowd:document.getElementById('avoidCrowd').checked }) });
+                renderItinerary(data);
+            } catch (err) { document.getElementById('itineraryOutput').classList.remove('hidden'); document.getElementById('itineraryOutput').innerHTML = `<div class="p-4 rounded-2xl bg-rose-400/10 border border-rose-400/15 text-rose-200 text-sm">Could not generate the route: ${escapeHtml(err.message)}</div>`; }
+            finally { btn.disabled = false; btn.textContent = 'Generate adaptive itinerary ✦'; }
+        }
+
+        function toggleChat() {
+            const drawer = document.getElementById('chatDrawer');
+            const fab = document.getElementById('chatFab');
+            const opening = drawer.classList.contains('hidden');
+            drawer.classList.toggle('hidden');
+            fab.classList.toggle('hidden', opening);
+            if (opening && !document.getElementById('chatHistory').children.length) addChat('assistant','Hi — I’m TourPulse. Tell me your destination, budget or what you want to avoid, and I’ll route you around crowd pressure.');
+            if (opening) setTimeout(()=>document.getElementById('chatInput').focus(),120);
+        }
+        function openChat(text='') { if (document.getElementById('chatDrawer').classList.contains('hidden')) toggleChat(); if (text) { document.getElementById('chatInput').value=text; sendChat(); } }
+        function addChat(role,text) { const wrap=document.createElement('div'); wrap.className=role==='user'?'flex justify-end':'flex justify-start'; wrap.innerHTML=`<div class="max-w-[85%] rounded-2xl px-3.5 py-3 text-sm ${role==='user'?'bg-teal-300/10 border border-teal-300/10 text-teal-50':'glass-soft text-slate-300'}">${escapeHtml(text).replace(/\n/g,'<br>')}</div>`; const h=document.getElementById('chatHistory'); h.appendChild(wrap); h.scrollTop=h.scrollHeight; }
+        async function sendChat() {
+            const input=document.getElementById('chatInput'); const message=input.value.trim(); if(!message)return;
+            addChat('user',message); input.value=''; const send=document.getElementById('chatSend'); send.disabled=true; send.textContent='…';
+            try { const data=await api('/api/concierge/chat',{method:'POST',body:JSON.stringify({message,travel_style:document.getElementById('itineraryStyle').value,budget:Number(document.getElementById('itineraryBudget').value),days:Number(document.getElementById('itineraryDays').value)})}); document.getElementById('aiMode').textContent = data.mode === 'ollama-local' ? 'Ollama · Local AI' : 'Local route intelligence'; addChat('assistant',data.response); }
+            catch(err){ addChat('assistant','I hit a local service error. The crowd map and itinerary tools are still available.'); }
+            finally { send.disabled=false; send.textContent='Send'; }
+        }
+
+        async function refreshImpact() {
+            const data=await api('/api/impact/summary');
+            const cards=[['−'+data.projected_crowd_reduction+'%','Projected congestion'],['+'+data.projected_secondary_footfall_increase+'%','Secondary footfall'],['₹'+Number(data.local_spend_redistributed).toLocaleString('en-IN'),'Local spend shifted'],[data.businesses_surfaced,'Businesses surfaced'],[data.high_alerts,'High-pressure alerts']];
+            document.getElementById('impactCards').innerHTML=cards.map(([value,label])=>`<div class="glass rounded-[24px] p-5"><div class="text-2xl font-extrabold">${escapeHtml(value)}</div><div class="text-xs text-slate-500 mt-2 uppercase tracking-wider">${escapeHtml(label)}</div></div>`).join('');
+            const grouped={}; destinations.forEach(d=>{ const region=d.location.split(',')[1]?.trim()||d.location; if(!grouped[region])grouped[region]=[]; grouped[region].push(d); });
+            document.getElementById('pressureBoard').innerHTML=Object.entries(grouped).map(([region,items])=>{const score=Math.round(items.reduce((s,d)=>s+d.crowd_score,0)/items.length); return `<div><div class="flex justify-between text-sm mb-2"><span class="font-semibold">${escapeHtml(region)}</span><span class="text-slate-500">${score}% avg pressure</span></div><div class="crowd-bar"><div class="crowd-fill" style="width:${score}%;background:${crowdColor(score)}"></div></div></div>`}).join('');
+        }
+
+        document.getElementById('chatInput').addEventListener('keydown', e=>{if(e.key==='Enter')sendChat();});
+        document.getElementById('itineraryForm').addEventListener('submit', submitItinerary);
+        initMarketTabs();
+
+
+        // --- Live Data Streaming -------------------------------------------
+        // Applies a telemetry frame in place: marker styling is mutated rather
+        // than markers being rebuilt, so an open popup or a mid-flight map
+        // animation is not destroyed every 5 seconds.
+        let pulseSocket = null;
+        let pulseRetryMs = 2000;
+
+        function applyPulse(payload) {
+            if (!payload || !Array.isArray(payload.destinations)) return;
+            const byId = new Map(payload.destinations.map(u => [u.id, u]));
+            destinations.forEach((d, i) => {
+                const u = byId.get(d.id);
+                if (!u) return;
+                d.crowd_score = u.crowd_score;
+                d.current_visitor_count = u.current_visitor_count;
+                d.status_tag = u.status_tag;
+                const marker = markers[i];
+                if (marker) {
+                    const color = crowdColor(d.crowd_score);
+                    marker.setStyle({ color, fillColor: color });
+                    if (marker.setRadius) marker.setRadius(Math.max(7, Math.min(15, d.crowd_score / 7)));
+                }
+            });
+            renderHotspots();
+            const indicator = document.getElementById('liveIndicator');
+            if (indicator) {
+                const when = new Date(payload.generated_at).toLocaleTimeString();
+                indicator.innerHTML = `<span class="w-2 h-2 rounded-full bg-teal-300 pulse"></span> Live · ${payload.high_alerts} high-pressure zone${payload.high_alerts === 1 ? '' : 's'} · updated ${when}`;
+            }
+        }
+
+        function setPulseOffline() {
+            const indicator = document.getElementById('liveIndicator');
+            if (indicator) indicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-slate-500"></span> Live feed reconnecting…';
+        }
+
+        function connectPulse() {
+            const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+            try { pulseSocket = new WebSocket(`${proto}://${location.host}/ws/pulse`); }
+            catch (err) { setPulseOffline(); setTimeout(connectPulse, pulseRetryMs); return; }
+
+            pulseSocket.onopen = () => { pulseRetryMs = 2000; };
+            pulseSocket.onmessage = (event) => {
+                try { applyPulse(JSON.parse(event.data)); } catch (err) { console.error('pulse frame', err); }
+            };
+            pulseSocket.onclose = () => {
+                setPulseOffline();
+                // Backoff caps at 15s so a server restart during a demo
+                // reconnects quickly without hammering a down server.
+                setTimeout(connectPulse, pulseRetryMs);
+                pulseRetryMs = Math.min(pulseRetryMs * 1.6, 15000);
+            };
+            pulseSocket.onerror = () => { try { pulseSocket.close(); } catch (err) {} };
+        }
+
+        async function boot() {
+            initCrowdMap();
+            try { destinations = await api('/api/destinations/'); renderMap(); renderHotspots(); renderAlternatives({alternatives:[...destinations].filter(d=>d.crowd_score<40).slice(0,3).map(d=>({destination:d,reason:'Low current crowd pressure — a calmer option to explore.',crowd_reduction:0,distance_km:18,local_economy_score:82}))}); }
+            catch(err) { console.error(err); }
             loadMarketplace();
-        });
+            refreshImpact();
+            connectPulse();
+            const status = await api('/api/concierge/status').catch(()=>null); if(status) document.getElementById('aiMode').textContent=status.local_ai_enabled?'Local AI ready · Ollama fallback enabled':'Local route intelligence';
+        }
+        boot();
     </script>
 </body>
 </html>

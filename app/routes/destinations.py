@@ -1,131 +1,324 @@
-# app/routes/destinations.py
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
-from typing import List
+from __future__ import annotations
 
-router = APIRouter(prefix="/api/destinations", tags=["Destinations"])
+from typing import List, Optional
 
-class DestinationBase(BaseModel):
-    name: str
-    location: str = "India"
-    description: str = "A scenic travel destination."
-    category: str = "General"
-    current_visitor_count: int = 250
-    crowd_score: int = Field(default=50, ge=0, le=100)
-    status_tag: str = Field(default="Moderate")
-    peak_hours: str = Field(default="10:00 AM - 4:00 PM")
-    image_url: str = Field(default="https://images.unsplash.com/photo-1596176530529-78163a4f7af2")
-    lat: float = Field(default=20.5937)
-    lng: float = Field(default=78.9629)
+from fastapi import APIRouter, HTTPException, Query
 
-class DestinationCreate(DestinationBase):
-    pass
+from app.models.tourism import Destination, DestinationCreate
 
-class Destination(DestinationBase):
-    id: int
+router = APIRouter(tags=["Destinations"])
 
-# In-memory storage seeded with valid records
+
+def _status(score: float) -> str:
+    if score < 40:
+        return "Low"
+    elif score <= 75:
+        return "Moderate"
+    else:
+        return "High"
+
+
 destinations_db: List[Destination] = [
     Destination(
         id=1,
-        name="Munnar Tea Plantations",
+        name="Munnar Tea Highlands",
         location="Idukki, Kerala",
-        description="Lush rolling hills and serene tea estates with misty valleys.",
+        description="Misty tea estates, forest trails and sweeping Western Ghats views.",
         category="Nature & Hills",
-        current_visitor_count=320,
-        crowd_score=28,
+        crowd_score=32.0,
+        current_visitor_count=640,
+        max_capacity=2000,
         status_tag="Low",
-        peak_hours="09:00 AM - 01:00 PM",
-        image_url="https://images.unsplash.com/photo-1593693397690-362cb9666fc2",
+        peak_hours="10:00 AM - 2:00 PM",
+        image_url="https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=1200&q=80",
         lat=10.0889,
-        lng=77.0595
+        lng=77.0595,
+        alternate_ids=[7, 8],
+        best_time="6:30–9:30 AM",
     ),
     Destination(
         id=2,
-        name="Hampi Monument Complex",
+        name="Hampi Heritage Circuit",
         location="Vijayanagara, Karnataka",
-        description="UNESCO World Heritage site with ancient ruins and boulders.",
+        description="Temple ruins, giant boulders and an unforgettable sunrise heritage circuit.",
         category="Heritage & Culture",
-        current_visitor_count=580,
-        crowd_score=45,
+        crowd_score=61.0,
+        current_visitor_count=1680,
+        max_capacity=2750,
         status_tag="Moderate",
-        peak_hours="08:00 AM - 11:30 AM",
-        image_url="https://images.unsplash.com/photo-1600100397608-f010e42e47d4",
-        lat=15.3350,
-        lng=76.4600
+        peak_hours="9:00 AM - 1:00 PM",
+        image_url="https://images.unsplash.com/photo-1600100397608-f010e42e47d4?auto=format&fit=crop&w=1200&q=80",
+        lat=15.335,
+        lng=76.46,
+        alternate_ids=[9],
+        best_time="6:00–9:00 AM",
     ),
     Destination(
         id=3,
-        name="Amber Palace & Fort",
+        name="Amber Palace",
         location="Jaipur, Rajasthan",
-        description="Opulent hilltop palace with courtyards and intricate mirror work.",
-        category="Historical Fort",
-        current_visitor_count=1850,
-        crowd_score=88,
+        description="Hilltop forts, mirror work and royal courtyards overlooking Jaipur.",
+        category="Fort & History",
+        crowd_score=88.0,
+        current_visitor_count=1900,
+        max_capacity=2500,
         status_tag="High",
-        peak_hours="11:00 AM - 04:30 PM",
-        image_url="https://images.unsplash.com/photo-1599661046289-e31897846e41",
-        lat=26.9855,
-        lng=75.8513
+        peak_hours="10:00 AM - 4:00 PM",
+        image_url="https://images.unsplash.com/photo-1573164082287-0a5f9e7a8b1d?auto=format&fit=crop&w=1200&q=80",
+        lat=26.9876,
+        lng=75.8542,
+        alternate_ids=[10, 11],
+        best_time="10:00 AM–1:00 PM",
     ),
     Destination(
         id=4,
-        name="Palolem Eco Coast",
+        name="Agonda Quiet Coast",
         location="South Goa, Goa",
-        description="Crescent beach known for quiet dolphin spots and sustainable shacks.",
-        category="Coastal & Beach",
-        current_visitor_count=420,
-        crowd_score=35,
+        description="A lower-density shoreline with community-run stays and slow-travel experiences.",
+        category="Hidden Gem",
+        crowd_score=23.0,
+        current_visitor_count=410,
+        max_capacity=1800,
         status_tag="Low",
-        peak_hours="04:00 PM - 07:00 PM",
-        image_url="https://images.unsplash.com/photo-1512343879784-a960bf40e7f2",
-        lat=15.0100,
-        lng=74.0232
+        peak_hours="4:00 PM - 7:00 PM",
+        image_url="https://images.unsplash.com/photo-1473116763249-2faaef81ccda?auto=format&fit=crop&w=1200&q=80",
+        lat=15.0400,
+        lng=74.0500,
+        alternate_ids=[12],
+        best_time="7:00–10:00 AM",
     ),
     Destination(
         id=5,
-        name="Dashashwamedh Ghat",
+        name="Sarnath Heritage Walk",
         location="Varanasi, Uttar Pradesh",
-        description="Historic spiritual ghat famous for the evening Ganga Aarti.",
-        category="Spiritual & Pilgrimage",
-        current_visitor_count=2400,
-        crowd_score=94,
-        status_tag="High",
-        peak_hours="05:30 PM - 08:30 PM",
-        image_url="https://images.unsplash.com/photo-1561361513-2d000a50f0dc",
-        lat=25.3076,
-        lng=83.0107
+        description="Peaceful Buddhist heritage, museum time and shaded walking routes away from the busiest ghats.",
+        category="Heritage & Reflection",
+        crowd_score=29.0,
+        current_visitor_count=680,
+        max_capacity=2400,
+        status_tag="Low",
+        peak_hours="10:00 AM - 1:00 PM",
+        image_url="https://images.unsplash.com/photo-1539650116574-75c0c6d46678?auto=format&fit=crop&w=1200&q=80",
+        lat=25.3816,
+        lng=83.0229,
+        alternate_ids=[13],
+        best_time="7:00–10:00 AM",
     ),
     Destination(
         id=6,
-        name="Pangong Tso & Leh Valley",
+        name="Sham Valley Villages",
         location="Leh, Ladakh",
-        description="High-altitude azure salt lake surrounded by barren peaks.",
-        category="Adventure & Mountain",
-        current_visitor_count=210,
-        crowd_score=22,
+        description="A quieter Himalayan circuit connecting villages, monasteries and local homestays.",
+        category="Community & Mountain",
+        crowd_score=20.0,
+        current_visitor_count=190,
+        max_capacity=900,
         status_tag="Low",
-        peak_hours="10:00 AM - 02:00 PM",
-        image_url="https://images.unsplash.com/photo-1581793745862-99fde7fa73d2",
-        lat=34.1526,
-        lng=77.5771
-    )
+        peak_hours="10:00 AM - 2:00 PM",
+        image_url="https://images.unsplash.com/photo-1478131143081-8d25f7d46678?auto=format&fit=crop&w=1200&q=80",
+        lat=34.1192,
+        lng=77.2582,
+        alternate_ids=[15],
+        best_time="6:00–10:00 AM",
+    ),
+    Destination(
+        id=7,
+        name="Anamudi Shola Trails",
+        location="Idukki, Kerala",
+        description="Quiet shola-grassland trails below South India's highest peak, capped to small groups.",
+        category="Nature & Forest",
+        crowd_score=15.0,
+        current_visitor_count=90,
+        max_capacity=700,
+        status_tag="Low",
+        peak_hours="5:30 AM - 9:00 AM",
+        image_url="https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=1200&q=80",
+        lat=10.1632,
+        lng=77.05,
+        alternate_ids=[1, 8],
+        best_time="6:00-9:00 AM",
+        estimated_visit_hours=3.0,
+    ),
+    Destination(
+        id=8,
+        name="Marayoor Sandalwood & Craft Village",
+        location="Idukki, Kerala",
+        description="Sandalwood reserve, dolmen sites and a women-led handloom collective.",
+        category="Culture & Craft",
+        crowd_score=22.0,
+        current_visitor_count=180,
+        max_capacity=900,
+        status_tag="Low",
+        peak_hours="11:00 AM - 3:00 PM",
+        image_url="https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=1200&q=80",
+        lat=10.276,
+        lng=77.164,
+        alternate_ids=[1, 7],
+        best_time="7:00-10:00 AM",
+        estimated_visit_hours=3.5,
+    ),
+    Destination(
+        id=9,
+        name="Anegundi Village Circuit",
+        location="Koppal, Karnataka",
+        description="Hampi's older twin across the river - coracle crossings, bell-metal studios, village lanes.",
+        category="Heritage & Village",
+        crowd_score=24.0,
+        current_visitor_count=150,
+        max_capacity=800,
+        status_tag="Low",
+        peak_hours="12:00 PM - 4:00 PM",
+        image_url="https://images.unsplash.com/photo-1600100397608-f010e42e47d4?auto=format&fit=crop&w=1200&q=80",
+        lat=15.345,
+        lng=76.472,
+        alternate_ids=[2],
+        best_time="6:30-10:00 AM",
+        estimated_visit_hours=4.0,
+    ),
+    Destination(
+        id=10,
+        name="Panna Meena ka Kund",
+        location="Jaipur, Rajasthan",
+        description="A symmetrical 16th-century stepwell minutes from Amber, with a fraction of the footfall.",
+        category="Heritage & Stepwell",
+        crowd_score=31.0,
+        current_visitor_count=260,
+        max_capacity=850,
+        status_tag="Low",
+        peak_hours="11:00 AM - 4:00 PM",
+        image_url="https://images.unsplash.com/photo-1573164082287-0a5f9e7a8b1d?auto=format&fit=crop&w=1200&q=80",
+        lat=26.9962,
+        lng=75.8513,
+        alternate_ids=[3, 11],
+        best_time="7:00-9:30 AM",
+        estimated_visit_hours=1.5,
+    ),
+    Destination(
+        id=11,
+        name="Sanganer Craft Quarter",
+        location="Jaipur, Rajasthan",
+        description="Working block-print and handmade-paper workshops open to visitors.",
+        category="Culture & Craft",
+        crowd_score=26.0,
+        current_visitor_count=210,
+        max_capacity=900,
+        status_tag="Low",
+        peak_hours="12:00 PM - 4:00 PM",
+        image_url="https://images.unsplash.com/photo-1573164082287-0a5f9e7a8b1d?auto=format&fit=crop&w=1200&q=80",
+        lat=26.817,
+        lng=75.79,
+        alternate_ids=[3, 10],
+        best_time="9:00 AM-12:00 PM",
+        estimated_visit_hours=2.5,
+    ),
+    Destination(
+        id=12,
+        name="Cola Beach & Cabo de Rama",
+        location="South Goa",
+        description="A lagoon-backed cove and clifftop fort well south of the crowded north-Goa belt.",
+        category="Coast & Fort",
+        crowd_score=19.0,
+        current_visitor_count=140,
+        max_capacity=750,
+        status_tag="Low",
+        peak_hours="12:00 PM - 4:00 PM",
+        image_url="https://images.unsplash.com/photo-1473116763249-2faaef81ccda?auto=format&fit=crop&w=1200&q=80",
+        lat=15.08,
+        lng=73.95,
+        alternate_ids=[4],
+        best_time="7:00-10:00 AM",
+        estimated_visit_hours=3.5,
+    ),
+    Destination(
+        id=13,
+        name="Chunar Fort Riverside",
+        location="Mirzapur, Uttar Pradesh",
+        description="A Ganges-bend fort with wide river views, an easy day trip from Varanasi.",
+        category="Heritage & River",
+        crowd_score=25.0,
+        current_visitor_count=170,
+        max_capacity=800,
+        status_tag="Low",
+        peak_hours="11:00 AM - 3:00 PM",
+        image_url="https://images.unsplash.com/photo-1539650116574-75c0c6d46678?auto=format&fit=crop&w=1200&q=80",
+        lat=25.127,
+        lng=82.88,
+        alternate_ids=[5, 14],
+        best_time="7:00-10:00 AM",
+        estimated_visit_hours=3.0,
+    ),
+    Destination(
+        id=14,
+        name="Ramnagar Loom Quarter",
+        location="Varanasi, Uttar Pradesh",
+        description="Handloom households weaving Banarasi textiles, visited directly rather than through showrooms.",
+        category="Culture & Craft",
+        crowd_score=21.0,
+        current_visitor_count=130,
+        max_capacity=700,
+        status_tag="Low",
+        peak_hours="12:00 PM - 4:00 PM",
+        image_url="https://images.unsplash.com/photo-1539650116574-75c0c6d46678?auto=format&fit=crop&w=1200&q=80",
+        lat=25.276,
+        lng=83.019,
+        alternate_ids=[5, 13],
+        best_time="9:00 AM-12:00 PM",
+        estimated_visit_hours=2.5,
+    ),
+    Destination(
+        id=15,
+        name="Hemis & Sham Valley Monasteries",
+        location="Leh, Ladakh",
+        description="A low-altitude monastery circuit pairing well with village homestays.",
+        category="Community & Mountain",
+        crowd_score=16.0,
+        current_visitor_count=95,
+        max_capacity=600,
+        status_tag="Low",
+        peak_hours="11:00 AM - 2:00 PM",
+        image_url="https://images.unsplash.com/photo-1478131143081-8d25f7d46678?auto=format&fit=crop&w=1200&q=80",
+        lat=33.912,
+        lng=77.702,
+        alternate_ids=[6],
+        best_time="7:00-11:00 AM",
+        estimated_visit_hours=4.0,
+    ),
 ]
 
+
 @router.get("/", response_model=List[Destination])
-def get_destinations():
+def get_destinations() -> List[Destination]:
     return destinations_db
 
+
 @router.get("/{dest_id}", response_model=Destination)
-def get_destination(dest_id: int):
-    for d in destinations_db:
-        if d.id == dest_id:
-            return d
+def get_destination(dest_id: int) -> Destination:
+    for destination in destinations_db:
+        if destination.id == dest_id:
+            return destination
     raise HTTPException(status_code=404, detail="Destination not found")
 
+
 @router.post("/", response_model=Destination)
-def create_destination(payload: DestinationCreate):
-    new_id = max([d.id for d in destinations_db], default=0) + 1
-    new_dest = Destination(id=new_id, **payload.model_dump())
-    destinations_db.append(new_dest)
-    return new_dest
+def create_destination(payload: DestinationCreate) -> Destination:
+    new_id = max((d.id for d in destinations_db), default=0) + 1
+    score = payload.crowd_score
+    item = Destination(
+        id=new_id,
+        name=payload.name,
+        location=payload.location,
+        description=payload.description,
+        category=payload.category,
+        crowd_score=score,
+        current_visitor_count=payload.current_visitor_count,
+        max_capacity=payload.max_capacity,
+        status_tag=payload.status_tag or _status(score),
+        peak_hours=payload.peak_hours,
+        image_url=payload.image_url,
+        lat=payload.lat,
+        lng=payload.lng,
+        alternate_ids=payload.alternate_ids,
+        best_time=payload.best_time,
+    )
+    destinations_db.append(item)
+    return item
